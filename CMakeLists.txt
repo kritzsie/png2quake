@@ -1,0 +1,7 @@
+cmake_minimum_required(VERSION 3.13.3)
+project(png2quake)
+find_package(PNG REQUIRED)
+include_directories(${PNG_INCLUDE_DIR})
+add_executable(png2quake src/miptex.c src/main.c)
+target_link_libraries(png2quake m ${PNG_LIBRARY})
+install(TARGETS png2quake DESTINATION bin)
