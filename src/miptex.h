@@ -1,5 +1,8 @@
 #ifndef PNG2QUAKE_MIPTEX_H
 #define PNG2QUAKE_MIPTEX_H
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 #include <stdlib.h>
 
@@ -11,8 +14,14 @@ struct miptex_s {
   unsigned char data[];
 };
 
-size_t miptex_miplevel_offset(unsigned int width, unsigned int height, unsigned char miplevel);
+struct miptex_s* miptex_new(unsigned int width, unsigned int height);
+void miptex_delete(struct miptex_s* miptex);
 
-size_t miptex_size(unsigned int width, unsigned int height);
+unsigned char* miptex_get_mipmap(struct miptex_s* miptex, size_t miplevel);
 
+size_t miptex_size(struct miptex_s* miptex);
+
+#ifdef __cplusplus
+}
+#endif
 #endif // PNG2QUAKE_MIPTEX_H

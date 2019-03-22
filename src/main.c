@@ -7,29 +7,34 @@
 
 #include "miptex.h"
 
-static png_structp png;
-static png_infop info;
-
 static struct miptex_s* miptex_from_png(FILE* pngfile) {
   struct miptex_s* miptex;
+
+  png_structp png;
+  png_infop info;
+
+  png = png_create_read_struct(PNG_LIBPNG_VER_STRING, NULL, NULL, NULL);
+  if (png == NULL) {
+    fprintf(stderr, "Error: no libpng read struct\n");
+    return NULL;
+  }
+
+  info = png_create_info_struct(png);
+  if (info == NULL) {
+    fprintf(stderr, "Error: no libpng info struct\n");
+    png_destroy_read_struct(&png, NULL, NULL);
+    return NULL;
+  }
 
   png_init_io(png, pngfile);
   png_read_info(png, info);
 
-  png_byte bit_depth = png_get_bit_depth(png, info);
-  if (bit_depth != 8) {
+  if (png_get_bit_depth(png, info) != 8) {
+    png_destroy_read_struct(&png, &info, NULL);
     return NULL;
   }
 
-  miptex = malloc(miptex_size(256, 256));
-  miptex->width = png_get_image_width(png, info);
-  miptex->height = png_get_image_height(png, info);
-  if (256 * 256 < miptex->width * miptex->height) {
-    miptex = realloc(miptex, miptex_size(miptex->width, miptex->height));
-  }
-  for (size_t i = 0; i < 4; ++i) {
-    miptex->miplevel[i] = miptex_miplevel_offset(miptex->width, miptex->height, i);
-  }
+  miptex = miptex_new(png_get_image_width(png, info), png_get_image_height(png, info));
 
   png_bytep* rows = malloc(sizeof(png_bytep*) * miptex->height);
   for (size_t y = 0; y < miptex->height; ++y) {
@@ -47,6 +52,8 @@ static struct miptex_s* miptex_from_png(FILE* pngfile) {
       mipmap[x + y * miptex->width / ratio] = miptex->data[x * ratio + y * miptex->width * ratio];
     }
   }
+
+  png_destroy_read_struct(&png, &info, NULL);
 
   return miptex;
 }
@@ -101,7 +108,7 @@ static int png2quake(const char* filename_png) {
 
   strncpy(miptex->name, texname, 16);
 
-  fwrite(miptex, 1, miptex_miplevel_offset(miptex->width, miptex->height, 4), miptexfile);
+  fwrite(miptex, 1, miptex_size(miptex), miptexfile);
 
   free(miptex);
   fclose(miptexfile);
@@ -111,15 +118,6 @@ static int png2quake(const char* filename_png) {
 }
 
 int main(int argc, char** argv) {
-  if (!(png = png_create_read_struct(PNG_LIBPNG_VER_STRING, NULL, NULL, NULL))) {
-    fprintf(stderr, "Error: no libpng read struct\n");
-    return EXIT_FAILURE;
-  }
-  if (!(info = png_create_info_struct(png))) {
-    fprintf(stderr, "Error: no libpng info struct\n");
-    return EXIT_FAILURE;
-  }
-
   if (argc > 1) {
     for (size_t i = 1; i < argc; ++i) {
       png2quake(argv[i]);
